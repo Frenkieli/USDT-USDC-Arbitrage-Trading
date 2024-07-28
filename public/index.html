@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Trading Bot</title>
+    <link rel="stylesheet" href="./reset.css" />
+    <link rel="stylesheet" href="./index.css" />
+  </head>
+  <body class="main">
+    <header class="header">
+      <div class="header-container">
+        <select id="tradingPairId">
+          <option value="USDCUSDT">USDCUSDT</option>
+        </select>
+        <input type="button" value="subscribe" id="subscribeButtonId" />
+        <div id="spotPairTabId" class="spot-pair"></div>
+      </div>
+    </header>
+
+    <main class="container">
+      <div class="water-flow">
+        <div id="usdtBalanceSpotId" class="balance-spot">
+          <div id="usdtBalanceFreeId" class="balance-free"></div>
+          <div id="usdtBalanceLockedId" class="balance-locked"></div>
+        </div>
+        <div id="pairBalanceSpotId" class="balance-spot">
+          <div id="pairBalanceLockedId" class="balance-locked"></div>
+          <div id="pairBalanceFreeId" class="balance-free"></div>
+        </div>
+      </div>
+      <div class="wallet">
+        <div id="usdtWalletSpotId" class="wallet-spot">
+          <div id="usdtWalletFreeId" class="wallet-free"></div>
+          <div id="usdtWalletLockedId" class="wallet-locked"></div>
+        </div>
+        <div id="pairWalletSpotId" class="wallet-spot">
+          <div id="pairWalletLockedId" class="wallet-locked"></div>
+          <div id="pairWalletFreeId" class="wallet-free"></div>
+        </div>
+      </div>
+
+      <div class="spot-content">
+        <div id="spotPairPriceListId" class="spot-pair-price-list"></div>
+      </div>
+    </main>
+    <footer class="footer">
+      <div>
+        <input type="button" value="TEST" id="TESTButtonId" />
+        <span id="totalCoinId">wait</span>
+      </div>
+      <div>
+        <input type="button" value="linkWs" id="linkWsButtonId" />
+        <span id="listenKeyId" class="listen-key">Wait to link ws</span>
+      </div>
+      <script src="https://cdn.jsdelivr.net/npm/lodash.debounce@4.0.8/index.min.js"></script>
+    <script src="./utils/webSocket.js"></script>
+    <script src="./tradingBot.js"></script>
+    <script src="./modelHandler.js"></script>
+    <script src="./layoutHandler.js"></script>
+    <script src="./viewHandler.js"></script>
+  </body>
+</html>

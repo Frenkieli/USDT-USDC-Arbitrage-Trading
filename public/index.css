@@ -1,0 +1,139 @@
+.main {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+/* header */
+.header {
+  border-bottom: 1px solid black;
+  flex-shrink: 0;
+}
+
+.header-container {
+  display: flex;
+}
+
+.spot-pair {
+  display: flex;
+  gap: 4px;
+}
+
+.spot-pair-tab {
+  padding: 1.5px;
+  background-color: gray;
+  color: white;
+  border: 1px solid black;
+}
+
+.spot-pair-tab.active {
+  background-color: yellow;
+  color: black;
+}
+/* header */
+
+/* container */
+/* 當前買賣清單 */
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 0;
+  flex-grow: 1;
+}
+
+.water-flow {
+  display: flex;
+  height: 0;
+  flex-grow: 1;
+  border-bottom: 1px solid black;
+}
+
+.balance-spot,
+.balance-free,
+.balance-locked {
+  height: 100%;
+}
+
+.balance-spot {
+  display: flex;
+  width: 50%;
+}
+
+.balance-spot:first-child {
+  background-color: #00a161;
+}
+
+.balance-spot:last-child {
+  background-color: #2671c4;
+}
+
+.balance-free,
+.wallet-free {
+  width: 0;
+  flex-grow: 1;
+}
+.balance-locked {
+  width: 50%;
+  display: flex;
+}
+
+.balance-locked > div {
+  height: 100%;
+  writing-mode: vertical-lr;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.wallet,
+.wallet-spot {
+  display: flex;
+  justify-content: center;
+}
+
+.wallet-free,
+.wallet-locked {
+  display: flex;
+  min-width: 60px;
+  justify-content: center;
+}
+
+/* spot-content */
+
+.spot-pair-price-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.spot-pair-price-list .sell {
+  color: red;
+}
+
+.spot-pair-price-list .buy {
+  color: green;
+}
+
+/* spot-content */
+/* container */
+/* footer */
+.footer {
+  display: flex;
+  justify-content: space-between;
+  flex-shrink: 0;
+  border-top: 1px solid black;
+  background-color: grey;
+}
+
+.footer div {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.listen-key {
+  max-width: 100px;
+  color: white;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* footer */
