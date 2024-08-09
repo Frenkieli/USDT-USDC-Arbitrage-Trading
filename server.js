@@ -1,11 +1,15 @@
+require("dotenv").config();
+const cron = require("node-cron");
+const fs = require("fs");
 const express = require("express");
 const path = require("path");
 const axios = require("axios");
 var CryptoJS = require("crypto-js");
-// const puppeteer = require("puppeteer");
+const puppeteer = require("puppeteer");
 const BASE_URL = "https://api.mexc.com";
-const apiKey = "mx0vglZrFklAELZLNi";
-const secretKey = "babbfef6039343e790cfa6151ff739c2";
+const apiKey = process.env.API_KEY;
+const secretKey = process.env.SECRET_KEY;
+const logFilePath = path.join(__dirname, "account_total_log.txt");
 
 axios.defaults.headers.common["X-MEXC-APIKEY"] = apiKey;
 axios.defaults.headers.common["Content-Type"] = "application/json";
@@ -144,6 +148,19 @@ app.get("/api/getAccount", async (req, res) => {
   axios
     .get(`${BASE_URL}/api/v3/account`)
     .then((response) => {
+      const { balances } = response.data;
+
+      const usdtBalance = balances.find((balance) => balance.asset === "USDT");
+      const pairBalance = balances.find((balance) => balance.asset === "USDC");
+
+      let usdtTotal =
+        parseFloat(usdtBalance.free) + parseFloat(usdtBalance.locked);
+      let pairTotal =
+        parseFloat(pairBalance.free) + parseFloat(pairBalance.locked);
+      let total = usdtTotal + pairTotal;
+
+      console.log(`Account Total : ${total} - ${new Date().toLocaleString()}`);
+
       res.send(response.data);
     })
     .catch((error) => console.error("Error:", error));
@@ -158,18 +175,67 @@ app.get("/api/order", async (req, res) => {
     .catch((error) => console.error("Error:", error));
 });
 
+app.post("/api/v3/cancel", async (req, res) => {
+  const toCancelOrderList = req.body;
+  let toBreak = false;
+  let keysList = {};
+  try {
+    for (let i = 0; i < toCancelOrderList.length; i++) {
+      if (toBreak) {
+        break;
+      }
+
+      const { orderId, symbol, price } = toCancelOrderList[i];
+
+      keysList[price] = keysList[price] ? price + keysList[price] : price;
+
+      await axios
+        .delete(`${BASE_URL}/api/v3/order?symbol=${symbol}&orderId=${orderId}`)
+        .then((response) => {
+          console.log(`Cancel Order Done: ${price} - ${orderId}`);
+        })
+        .catch((error) => {
+          console.error(`Cancel Order Error: ${orderId}:`, error);
+          toBreak = true;
+        });
+    }
+  } catch (error) {
+    console.error(`Error 1:`, error);
+  }
+
+  if (toBreak) {
+    console.log(
+      `Cancel Order error client: ${Object.entries(keysList)
+        .map((value) => `${value[0]} - ${value[1]}`)
+        .join(", ")} - ${new Date().toLocaleString()}`
+    );
+    res.send("error");
+  } else {
+    console.log(
+      `Cancel Order success client: ${Object.keys(keysList).join(
+        ", "
+      )} - ${new Date().toLocaleString()}`
+    );
+    res.send("success");
+  }
+});
+
 app.post("/api/v3/order", async (req, res) => {
   const toOrderList = req.body;
-  try {
-    toOrderList.forEach((order) => {
-      const { symbol, side, type, quantity, price } = order;
+  let toBreak = false;
 
+  try {
+    for (let i = 0; i < toOrderList.length; i++) {
+      if (toBreak) {
+        break;
+      }
+      const { symbol, side, type, quantity, price } = toOrderList[i];
       if (quantity * price >= 1) {
         console.log(
-          `Place order: ${order.side} - ${order.price} - ${order.quantity}`
+          `Place order: ${toOrderList[i].side} - ${toOrderList[i].price} - ${toOrderList[i].quantity}`
         );
 
-        axios
+        await axios
           .post(`${BASE_URL}/api/v3/order`, {
             symbol,
             side,
@@ -178,13 +244,37 @@ app.post("/api/v3/order", async (req, res) => {
             price,
           })
           .then((response) => {
-            res.send(response.data);
+            console.log(
+              `Place Order Done: ${toOrderList[i].side} - ${toOrderList[i].price} - ${toOrderList[i].quantity}`
+            );
           })
-          .catch((error) => console.error("Error:", error));
+          .catch((error) => {
+            console.error(
+              `Place Order Error: ${toOrderList[i].side} - ${toOrderList[i].price} - ${toOrderList[i].quantity}:`,
+              error
+            );
+            if (
+              error?.response?.data?.code === 30005 ||
+              error?.response?.data?.code === 30004
+            ) {
+              toBreak = true;
+              // axios.delete(`${BASE_URL}/api/v3/openOrders?symbol=${symbol}`);
+            }
+          });
       }
-    });
+    }
   } catch (error) {
-    res.send("Error:");
+    console.error(`Error 2:`, error);
+  }
+
+  if (toBreak) {
+    console.log(`response error client: ${new Date().toLocaleString()}`);
+
+    res.send("error");
+  } else {
+    console.log(`response success client: ${new Date().toLocaleString()}`);
+
+    res.send("success");
   }
 });
 
@@ -193,11 +283,79 @@ app.post("/api/v3/order", async (req, res) => {
 //   res.send("POST request to the homepage");
 // });
 
-// (async () => {
-//   // launches a browser instance
-//   const browser = await puppeteer.launch();
-//   // creates a new page in the default browser context
-//   const page = await browser.newPage();
-//   // navigates to the page to be scraped
-//   await page.goto("http://localhost:3010/");
-// })();
+async function startBrowser() {
+  // launches a browser instance
+  const browser = await puppeteer.launch();
+  // creates a new page in the default browser context
+  const page = await browser.newPage();
+  // navigates to the page to be scraped
+  await page.goto("http://localhost:3010/");
+
+  setTimeout(async () => {
+    await browser.close();
+
+    startBrowser();
+  }, 1000 * 60 * 5);
+}
+
+startBrowser();
+
+// Function to append data to a local file
+function appendToFile(data) {
+  const logEntry = `${data.total} - ${data.timestamp}\n`;
+  fs.appendFileSync(logFilePath, logEntry, "utf8");
+  console.log(`Successfully saved to log file: ${logEntry}`);
+}
+
+// Schedule the task to run every day at 11:00 AM
+cron.schedule("0 11 * * *", async () => {
+  try {
+    // Assuming the total is obtained from your existing /api/getAccount endpoint
+    const response = await axios.get(`${BASE_URL}/api/v3/account`);
+    const { balances } = response.data;
+
+    const usdtBalance = balances.find((balance) => balance.asset === "USDT");
+    const pairBalance = balances.find((balance) => balance.asset === "USDC");
+
+    const usdtTotal =
+      parseFloat(usdtBalance.free) + parseFloat(usdtBalance.locked);
+    const pairTotal =
+      parseFloat(pairBalance.free) + parseFloat(pairBalance.locked);
+    const total = usdtTotal + pairTotal;
+
+    const data = {
+      total,
+      timestamp: new Date().toLocaleString(),
+    };
+
+    appendToFile(data);
+  } catch (error) {
+    console.error("Error fetching account total:", error);
+  }
+});
+
+(async () => {
+  try {
+    // Assuming the total is obtained from your existing /api/getAccount endpoint
+    const response = await axios.get(`${BASE_URL}/api/v3/account`);
+    const { balances } = response.data;
+
+    const usdtBalance = balances.find((balance) => balance.asset === "USDT");
+    const pairBalance = balances.find((balance) => balance.asset === "USDC");
+
+    const usdtTotal =
+      parseFloat(usdtBalance.free) + parseFloat(usdtBalance.locked);
+    const pairTotal =
+      parseFloat(pairBalance.free) + parseFloat(pairBalance.locked);
+    const total = usdtTotal + pairTotal;
+
+    const data = {
+      total,
+      timestamp: new Date().toLocaleString(),
+    };
+
+    appendToFile(data);
+  } catch (error) {
+    console.error("Error fetching account total:", error);
+  }
+})();

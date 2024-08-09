@@ -88,6 +88,7 @@ class TradingBot {
 
     const { buyPrice, sellPrice } = this.getCurrentSpotPrice();
     let toOrderList = [];
+    let toCancelOrderList = [];
 
     let priceBuyIndex = 0;
     let buyList = [];
@@ -166,7 +167,6 @@ class TradingBot {
           price,
           quantity,
         });
-
         if (this.orderList.sell[price]) {
           const existingSellOrders = this.orderList.sell[price].reduce(
             (acc, order) => acc + parseFloat(order.origQty),
@@ -179,6 +179,20 @@ class TradingBot {
               quantity: quantity - existingSellOrders,
               price,
             });
+          } else {
+            let nowPriceTotal = 0;
+
+            for (let i = 0; i < this.orderList.sell[price].length; i++) {
+              nowPriceTotal += parseFloat(
+                this.orderList.sell[price][i].origQty
+              );
+              if (nowPriceTotal >= quantity) {
+                toCancelOrderList.push(this.orderList.sell[price][i]);
+                nowPriceTotal -= parseFloat(
+                  this.orderList.sell[price][i].origQty
+                );
+              }
+            }
           }
         } else {
           toOrderList.push({
@@ -192,7 +206,11 @@ class TradingBot {
     }
 
     console.log("toOrderList", toOrderList);
-    this.placeOrder(toOrderList);
+    if (toCancelOrderList.length > 0) {
+      this.cancelOrder(toCancelOrderList);
+    } else {
+      this.placeOrder(toOrderList);
+    }
   }
 
   placeOrder(toOrderList) {
@@ -203,6 +221,24 @@ class TradingBot {
       },
       body: JSON.stringify(
         toOrderList.map((order) => ({ ...order, type: "LIMIT" }))
+      ),
+    }).then((res) => {
+      return res.json();
+    });
+  }
+
+  cancelOrder(toCancelOrderList) {
+    fetch(`/api/v3/cancel`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(
+        toCancelOrderList.map((order) => ({
+          orderId: order.orderId,
+          symbol: order.symbol,
+          price: order.price,
+        }))
       ),
     }).then((res) => {
       return res.json();

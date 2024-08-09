@@ -84,8 +84,4 @@ document.getElementById("TESTButtonId").addEventListener("click", async (e) => {
       modelHandler.setWalletBalances(result, orderResult);
     }, 1000);
   }, 500);
-
-  setTimeout(() => {
-    location.reload();
-  }, 1000 * 60 * 15);
 })();
