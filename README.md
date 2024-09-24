@@ -20,16 +20,15 @@ Based on a month of operation, the estimated monthly profit is around **9%**. Be
 
 1. Download the project and unzip it.
 2. Download and install Node.js: [https://nodejs.org/](https://nodejs.org/)
-3. Open the command prompt and navigate to the project folder.
-4. Create an account on MEXC Exchange using this [link](https://www.mexc.com/register?inviteCode=1iKXW).
-5. Generate an API key and secret in your MEXC account.
-6. Create a `.env` file in the project folder and add your API and Secret Keys like this:
+3. Create an account on MEXC Exchange using this [link](https://www.mexc.com/register?inviteCode=1iKXW).
+4. Generate an API key and secret in your MEXC account.
+5. Create a `.env` file in the project folder and add your API and Secret Keys like this:
 
    ```plaintext
    API_KEY=XXX
    SECRET_KEY=XXX
    ```
-
+6. Open the command prompt and navigate to the project folder.
 7. Run the following command to install dependencies:
 
    ```bash
