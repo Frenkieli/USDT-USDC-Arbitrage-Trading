@@ -123,7 +123,7 @@ class LayoutHandler {
           100;
 
         sellElement.innerText = `${price} - ${sellList[price].reduce(
-          // 靠北，這文件 origOty 這個 key 是錯的，應該是 origQty
+          // Damn it, the key "origOty" in this file is wrong, it should be "origQty"
           (pre, cur) => pre + parseFloat(cur.origQty),
           0
         )} - ${percentage}% - ${sellList[price].length}`;
@@ -160,7 +160,7 @@ class LayoutHandler {
         buyListElement.appendChild(buyElement);
       });
 
-    // 下方用來讓畫面顯示金額
+    // Code below is used to display the amount on the screen
 
     document.getElementById("usdtWalletFreeId").innerText =
       usdtBalance.free <= 0.0001

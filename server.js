@@ -19,7 +19,7 @@ axios.defaults.headers.common["Access-Control-Allow-Methods"] =
 axios.defaults.headers.common["Access-Control-Allow-Headers"] =
   "Content-Type, Authorization, Content-Length, X-Requested-With";
 
-// 這邊要撰寫轉化為signature的加密function
+// Here you need to write the encryption function for axios before sending, which has two parameters: params and data, but both are passed in params.
 function getSignature(params) {
   const totalParams = Object.keys(params)
     .map((key) => `${key}=${params[key]}`)
@@ -27,7 +27,7 @@ function getSignature(params) {
   return CryptoJS.HmacSHA256(totalParams, secretKey).toString();
 }
 
-// 這邊要撰寫 axios 送出前的加密function，他有 params 跟 data 兩種參數，但統一在 params 帶入
+// Here you need to write the encryption function for axios before sending, which has two parameters: params and data, but both are passed in params.
 axios.interceptors.request.use(function (config) {
   const timestamp = Date.now();
   if (config.method === "get" || config.method === "delete") {
@@ -76,13 +76,13 @@ function generateListenKey() {
     .get(`${BASE_URL}/api/v3/userDataStream`)
     .then((response) => {
       if (response.data.listenKey.length > 0) {
-        console.log("Get ListenKey:", response.data.listenKey);
+        // console.log("Get ListenKey:", response.data.listenKey);
         return response.data.listenKey;
       } else {
         return axios
           .post(`${BASE_URL}/api/v3/userDataStream`)
           .then((response) => {
-            console.log("generate ListenKey", response.data.listenKey);
+            // console.log("generate ListenKey", response.data.listenKey);
             return response.data.listenKey;
           })
           .catch((error) => console.error("Error:", error));
@@ -125,11 +125,12 @@ app.get("/api/getListenKey", async (req, res) => {
       listenKey,
     })
     .then((response) => {
-      console.log("Keep ListenKey:", response.data);
+      // console.log("Keep ListenKey:", response.data);
+      console.log("====================================");
     })
     .catch((error) => console.error("Error:", error));
 
-  // 延長 listenKey 有效時間
+  // Extend the validity period of the listenKey
   clearInterval(getListenKeyTimer);
   getListenKeyTimer = setInterval(() => {
     axios
@@ -192,7 +193,7 @@ app.post("/api/v3/cancel", async (req, res) => {
       await axios
         .delete(`${BASE_URL}/api/v3/order?symbol=${symbol}&orderId=${orderId}`)
         .then((response) => {
-          console.log(`Cancel Order Done: ${price} - ${orderId}`);
+          console.warn(`Cancel Order Done: ${price} - ${orderId}`);
         })
         .catch((error) => {
           console.error(`Cancel Order Error: ${orderId}:`, error);
@@ -204,14 +205,14 @@ app.post("/api/v3/cancel", async (req, res) => {
   }
 
   if (toBreak) {
-    console.log(
+    console.error(
       `Cancel Order error client: ${Object.entries(keysList)
         .map((value) => `${value[0]} - ${value[1]}`)
         .join(", ")} - ${new Date().toLocaleString()}`
     );
     res.send("error");
   } else {
-    console.log(
+    console.warn(
       `Cancel Order success client: ${Object.keys(keysList).join(
         ", "
       )} - ${new Date().toLocaleString()}`
@@ -223,6 +224,7 @@ app.post("/api/v3/cancel", async (req, res) => {
 app.post("/api/v3/order", async (req, res) => {
   const toOrderList = req.body;
   let toBreak = false;
+  let lessOneTotal = 0;
 
   try {
     for (let i = 0; i < toOrderList.length; i++) {
@@ -261,6 +263,8 @@ app.post("/api/v3/order", async (req, res) => {
               // axios.delete(`${BASE_URL}/api/v3/openOrders?symbol=${symbol}`);
             }
           });
+      } else {
+        lessOneTotal += quantity * price;
       }
     }
   } catch (error) {
@@ -268,11 +272,13 @@ app.post("/api/v3/order", async (req, res) => {
   }
 
   if (toBreak) {
-    console.log(`response error client: ${new Date().toLocaleString()}`);
+    console.error(`response error client: ${new Date().toLocaleString()}`);
 
     res.send("error");
   } else {
-    console.log(`response success client: ${new Date().toLocaleString()}`);
+    console.log(
+      `response success client: ${lessOneTotal} - ${new Date().toLocaleString()}`
+    );
 
     res.send("success");
   }

@@ -38,22 +38,23 @@ class TradingBot {
     };
   }
 
+  // here is the place to adjust the target distribution
   calculateTargetDistribution(price) {
     // if (price >= 1.2) return { usdt: 1, usdc: 0 };
-    if (price >= 1.1) return { usdt: 1, usdc: 0 };
-    if (price >= 1.001) return { usdt: 0.95, usdc: 0.05 };
-    if (price >= 1.0005) return { usdt: 0.9, usdc: 0.1 };
-    if (price >= 1.0004) return { usdt: 0.82, usdc: 0.18 };
-    if (price >= 1.0003) return { usdt: 0.74, usdc: 0.26 };
-    if (price >= 1.0002) return { usdt: 0.66, usdc: 0.34 };
-    if (price >= 1.0001) return { usdt: 0.58, usdc: 0.42 };
+    // if (price >= 1.1) return { usdt: 1, usdc: 0 };
+    // if (price >= 1.001) return { usdt: 1, usdc: 0 };
+    if (price >= 1.0005) return { usdt: 1, usdc: 0 };
+    if (price >= 1.0004) return { usdt: 0.9, usdc: 0.1 };
+    if (price >= 1.0003) return { usdt: 0.8, usdc: 0.2 };
+    if (price >= 1.0002) return { usdt: 0.7, usdc: 0.3 };
+    if (price >= 1.0001) return { usdt: 0.6, usdc: 0.4 };
     if (price >= 1) return { usdt: 0.5, usdc: 0.5 };
-    if (price >= 0.9999) return { usdt: 0.42, usdc: 0.58 };
-    if (price >= 0.9998) return { usdt: 0.34, usdc: 0.66 };
-    if (price >= 0.9997) return { usdt: 0.26, usdc: 0.74 };
-    if (price >= 0.9996) return { usdt: 0.18, usdc: 0.82 };
-    if (price >= 0.9995) return { usdt: 0.1, usdc: 0.9 };
-    if (price >= 0.999) return { usdt: 0.05, usdc: 0.95 };
+    if (price >= 0.9999) return { usdt: 0.4, usdc: 0.6 };
+    if (price >= 0.9998) return { usdt: 0.3, usdc: 0.7 };
+    if (price >= 0.9997) return { usdt: 0.2, usdc: 0.8 };
+    if (price >= 0.9996) return { usdt: 0.1, usdc: 0.9 };
+    // if (price >= 0.9995) return { usdt: 0.1, usdc: 0.9 };
+    // if (price >= 0.999) return { usdt: 0.05, usdc: 0.95 };
     // if (price >= 0.9) return { usdt: 0.1, usdc: 0.9 };
     return { usdt: 0, usdc: 1 };
   }
@@ -77,10 +78,15 @@ class TradingBot {
   adjustOrders() {
     const totalValue = this.walletBalances.usdtBalance.total;
 
+    // here is the place to adjust the price levels
     const priceBuyLevels = [
       // 1.2,
-      1.1, 1.001, 1.0005, 1.0004, 1.0003, 1.0002, 1.0001, 1, 0.9999, 0.9998,
-      0.9997, 0.9996, 0.9995, 0.999, 0.9,
+      // 1.1,
+      // 1.001,
+      1.0005, 1.0004, 1.0003, 1.0002, 1.0001, 1, 0.9999, 0.9998, 0.9997, 0.9996,
+      0.9995,
+      // 0.999,
+      //  0.9,
       // 0.8,
     ];
 
@@ -100,6 +106,7 @@ class TradingBot {
       }
     }
 
+    // 買進方向
     for (let i = priceBuyIndex; i < priceBuyLevels.length; i++) {
       const price = priceBuyLevels[i];
       const targetDistribution = this.calculateTargetDistribution(price);
@@ -118,7 +125,8 @@ class TradingBot {
 
         if (this.orderList.buy[price]) {
           const existingBuyOrders = this.orderList.buy[price].reduce(
-            (acc, order) => acc + parseFloat(order.origQty),
+            (acc, order) =>
+              acc + parseFloat(order.origQty) - parseFloat(order.executedQty),
             0
           );
 
@@ -129,6 +137,22 @@ class TradingBot {
               quantity: quantity - existingBuyOrders,
               price,
             });
+          } else {
+            let nowPriceTotal = 0;
+
+            for (let i = 0; i < this.orderList.buy[price].length; i++) {
+              nowPriceTotal =
+                nowPriceTotal +
+                parseFloat(this.orderList.buy[price][i].origQty) -
+                parseFloat(this.orderList.buy[price][i].executedQty);
+              if (nowPriceTotal >= quantity) {
+                toCancelOrderList.push(this.orderList.buy[price][i]);
+                nowPriceTotal =
+                  nowPriceTotal -
+                  parseFloat(this.orderList.buy[price][i].origQty) +
+                  parseFloat(this.orderList.buy[price][i].executedQty);
+              }
+            }
           }
         } else {
           toOrderList.push({
@@ -151,6 +175,7 @@ class TradingBot {
       }
     }
 
+    // 賣出方向
     for (let i = priceSellIndex; i < priceSellLevels.length; i++) {
       const price = priceSellLevels[i];
       const targetDistribution = this.calculateTargetDistribution(price);
@@ -169,7 +194,8 @@ class TradingBot {
         });
         if (this.orderList.sell[price]) {
           const existingSellOrders = this.orderList.sell[price].reduce(
-            (acc, order) => acc + parseFloat(order.origQty),
+            (acc, order) =>
+              acc + parseFloat(order.origQty) - parseFloat(order.executedQty),
             0
           );
           if (existingSellOrders < quantity) {
@@ -183,14 +209,16 @@ class TradingBot {
             let nowPriceTotal = 0;
 
             for (let i = 0; i < this.orderList.sell[price].length; i++) {
-              nowPriceTotal += parseFloat(
-                this.orderList.sell[price][i].origQty
-              );
+              nowPriceTotal =
+                nowPriceTotal +
+                parseFloat(this.orderList.sell[price][i].origQty) -
+                parseFloat(this.orderList.sell[price][i].executedQty);
               if (nowPriceTotal >= quantity) {
                 toCancelOrderList.push(this.orderList.sell[price][i]);
-                nowPriceTotal -= parseFloat(
-                  this.orderList.sell[price][i].origQty
-                );
+                nowPriceTotal =
+                  nowPriceTotal -
+                  parseFloat(this.orderList.sell[price][i].origQty) +
+                  parseFloat(this.orderList.sell[price][i].executedQty);
               }
             }
           }
@@ -205,7 +233,6 @@ class TradingBot {
       }
     }
 
-    console.log("toOrderList", toOrderList);
     if (toCancelOrderList.length > 0) {
       this.cancelOrder(toCancelOrderList);
     } else {

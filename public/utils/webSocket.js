@@ -1,11 +1,9 @@
 const WEB_SOCKET_API = {
   WS: "wss://wbs.mexc.com/ws",
-  SPOT_PUBLIC_LIMIT_DEPTH_V3_API: "public.limit.depth.v3.api", //有限档位深度信息
-  SPOT_PRIVATE_ACCOUNT_V3_API: "private.account.v3.api", // 现货账户信息(实时)
-  // 现货账户成交(实时)
-  SPOT_PRIVATE_DEALS_V3_API: "private.deals.v3.api",
-  // A:现货账户订单(实时) B:账户止盈止损订单(实时)
-  SPOT_PRIVATE_ORDERS_V3_API: "private.orders.v3.api",
+  SPOT_PUBLIC_LIMIT_DEPTH_V3_API: "public.limit.depth.v3.api", // Limited depth information
+  SPOT_PRIVATE_ACCOUNT_V3_API: "private.account.v3.api", // Spot account information (real-time)
+  SPOT_PRIVATE_DEALS_V3_API: "private.deals.v3.api", // Spot account trades (real-time)
+  SPOT_PRIVATE_ORDERS_V3_API: "private.orders.v3.api", // Spot account orders (real-time)
 };
 
 const spotPrivateHandler = debounce(async () => {
@@ -147,20 +145,18 @@ class WebSocketHandler {
     );
   }
 }
+// Spot account information (real-time)
+// After successful subscription, the server will push updates of account assets whenever the account balance or available balance changes.
 
-// 现货账户信息(实时)
-// 在订阅成功后，每当账户余额发生变动或可用余额发生变动时，服务器将推送账户资产的更新。
-
-// request:
-
+// Request:
 // {
 //     "method": "SUBSCRIPTION",
 //     "params": [
-//     "spot@private.account.v3.api"
+//         "spot@private.account.v3.api"
 //     ]
 // }
-// response:
 
+// Response:
 // {
 //     "c": "spot@private.account.v3.api",
 //     "d": {
@@ -174,31 +170,33 @@ class WebSocketHandler {
 //     },
 //     "t": 1678185928435
 // }
-// 请求参数： spot@private.account.v3.api
 
-// 返回参数:
+// Request Parameters:
+// spot@private.account.v3.api
 
-// 参数名	数据类型	说明
-// d	json	账户信息
-// > a	string	资产名称
-// > c	long	结算时间
-// > f	string	可用余额
-// > fd	string	可用变动金额
-// > l	string	冻结余额
-// > ld	string	冻结变动金额
-// > o	string	变动类型
-// t	long	事件时间
-// 现货账户成交(实时)
-// request:
+// Response Parameters:
 
+// Parameter     Data Type   Description
+// d             json        Account information
+// > a           string      Asset name
+// > c           long        Settlement time
+// > f           string      Available balance
+// > fd          string      Available balance change
+// > l           string      Frozen balance
+// > ld          string      Frozen balance change
+// > o           string      Change type
+// t             long        Event time
+
+// Spot account trades (real-time)
+// Request:
 // {
 //     "method": "SUBSCRIPTION",
 //     "params": [
 //         "spot@private.deals.v3.api"
 //     ]
 // }
-// response:
 
+// Response:
 // {
 //     "c": "spot@private.deals.v3.api",
 //     "d": {
@@ -218,118 +216,123 @@ class WebSocketHandler {
 //     "s": "MXUSDT",
 //     "t": 1661938980285
 // }
-// 请求参数： spot@private.deals.v3.api
 
-// 返回参数:
+// Request Parameters:
+// spot@private.deals.v3.api
 
-// 参数名	数据类型	说明
-// d	json	账户成交信息
-// > S	int	交易类型 1:买 2:卖
-// > T	long	成交时间
-// > c	string	用户自定义订单id: clientOrderId
-// > i	string	订单id: orderId
-// > m	int	是否是挂单: isMaker
-// > p	string	交易价格
-// > st	byte	是否自成交：isSelfTrade
-// > t	string	成交id: tradeId
-// > v	string	交易数量
-// > a	string	交易金额
-// > n	string	手续费数量
-// > N	string	手续费币种
-// s	string	交易对
-// t	long	事件时间
-// 现货账户订单(实时)
-// request:
+// Response Parameters:
 
+// Parameter     Data Type   Description
+// d             json        Account trade information
+// > S           int         Trade type 1: Buy 2: Sell
+// > T           long        Trade time
+// > c           string      User-defined order id: clientOrderId
+// > i           string      Order id: orderId
+// > m           int         Whether it is a maker order: isMaker
+// > p           string      Trade price
+// > st          byte        Whether it is a self-trade: isSelfTrade
+// > t           string      Trade id: tradeId
+// > v           string      Trade quantity
+// > a           string      Trade amount
+// > n           string      Fee quantity
+// > N           string      Fee currency
+// s             string      Trading pair
+// t             long        Event time
+
+// Spot account orders (real-time)
+// Request:
 // {
-//   "method": "SUBSCRIPTION",
-//   "params": [
-//       "spot@private.orders.v3.api"
-//   ]
+//     "method": "SUBSCRIPTION",
+//     "params": [
+//         "spot@private.orders.v3.api"
+//     ]
 // }
-// 请求参数： spot@private.orders.v3.api
 
-// a.限价/市价订单 (实时)
-// response:
+// Request Parameters:
+// spot@private.orders.v3.api
 
+// a. Limit/Market Orders (real-time)
+// Response:
 // {
-//   "c": "spot@private.orders.v3.api",
-//   "d": {
-//         "A":8.0,
-//         "O":1661938138000,
-//         "S":1,
-//         "V":10,
-//         "a":8,
-//         "c":"",
-//         "i":"e03a5c7441e44ed899466a7140b71391",
-//         "m":0,
-//         "o":1,
-//         "p":0.8,
-//         "s":1,
-//         "v":10,
-//         "ap":0,
-//         "cv":0,
-//         "ca":0
-//   },
-//   "s": "MXUSDT",
-//   "t": 1661938138193
+//     "c": "spot@private.orders.v3.api",
+//     "d": {
+//         "A": 8.0,
+//         "O": 1661938138000,
+//         "S": 1,
+//         "V": 10,
+//         "a": 8,
+//         "c": "",
+//         "i": "e03a5c7441e44ed899466a7140b71391",
+//         "m": 0,
+//         "o": 1,
+//         "p": 0.8,
+//         "s": 1,
+//         "v": 10,
+//         "ap": 0,
+//         "cv": 0,
+//         "ca": 0
+//     },
+//     "s": "MXUSDT",
+//     "t": 1661938138193
 // }
-// 返回参数:
 
-// 参数名	数据类型	说明
-// d	json	账户订单信息
-// > A	bigDecimal	实际剩余金额: remainAmount
-// > O	long	订单创建时间
-// > S	int	交易类型 1:买 2:卖
-// > V	bigDecimal	实际剩余数量: remainQuantity
-// > a	bigDecimal	下单总金额
-// > c	string	用户自定义订单id: clientOrderId
-// > i	string	订单id
-// > m	int	是否是挂单: isMaker
-// > o	int	订单类型LIMIT_ORDER(1),POST_ONLY(2),IMMEDIATE_OR_CANCEL(3),
-// FILL_OR_KILL(4),MARKET_ORDER(5); 止盈止损（100）
-// > p	bigDecimal	下单价格
-// > s	int	订单状态 1:未成交 2:已成交 3:部分成交 4:已撤单 5:部分撤单
-// > v	bigDecimal	下单数量
-// > ap	bigDecimal	平均成交价
-// > cv	bigDecimal	累计成交数量
-// > ca	bigDecimal	累计成交金额
-// t	long	事件时间
-// s	string	交易对
-// b.账户止盈止损订单(实时)
-// response:
+// Response Parameters:
 
+// Parameter     Data Type   Description
+// d             json        Account order information
+// > A           bigDecimal  Remaining amount: remainAmount
+// > O           long        Order creation time
+// > S           int         Trade type 1: Buy 2: Sell
+// > V           bigDecimal  Remaining quantity: remainQuantity
+// > a           bigDecimal  Total order amount
+// > c           string      User-defined order id: clientOrderId
+// > i           string      Order id
+// > m           int         Whether it is a maker order: isMaker
+// > o           int         Order type LIMIT_ORDER(1), POST_ONLY(2), IMMEDIATE_OR_CANCEL(3),
+//                           FILL_OR_KILL(4), MARKET_ORDER(5); Stop loss/take profit (100)
+// > p           bigDecimal  Order price
+// > s           int         Order status 1: Not filled 2: Filled 3: Partially filled 4: Canceled 5: Partially canceled
+// > v           bigDecimal  Order quantity
+// > ap          bigDecimal  Average execution price
+// > cv          bigDecimal  Cumulative execution quantity
+// > ca          bigDecimal  Cumulative execution amount
+// t             long        Event time
+// s             string      Trading pair
+
+// b. Stop Loss/Take Profit Orders (real-time)
+// Response:
 // {
-//   "c": "spot@private.orders.v3.api",
-//   "d": {
-//         "N":"USDT",
-//         "O":1661938853715,
-//         "P":0.9,
-//         "S":1,
-//         "T":1,
-//         "i":"f6d82e5f41d745f59fe9d3cafffd80b5",
-//         "o":100,
-//         "p":1.01,
-//         "s":"NEW",
-//         "v":6
-//   },
-//   "s": "MXUSDT",
-//   "t": 1661938853727
+//     "c": "spot@private.orders.v3.api",
+//     "d": {
+//         "N": "USDT",
+//         "O": 1661938853715,
+//         "P": 0.9,
+//         "S": 1,
+//         "T": 1,
+//         "i": "f6d82e5f41d745f59fe9d3cafffd80b5",
+//         "o": 100,
+//         "p": 1.01,
+//         "s": "NEW",
+//         "v": 6
+//     },
+//     "s": "MXUSDT",
+//     "t": 1661938853727
 // }
-// 返回参数:
 
-// 参数名	数据类型	说明
-// d	json	账户订单信息
-// > N	string	手续费资产类别
-// > O	long	订单创建时间
-// > P	bigDecimal	触发价格
-// > S	int	交易类型 1: 买 2: 卖
-// > T	int	0: GE(买入价大过触发价) 1: LE(买入价小于触发价)
-// > i	string	订单id
-// > o	int	订单类型 LIMIT_ORDER(1),POST_ONLY(2),IMMEDIATE_OR_CANCEL(3),
-// FILL_OR_KILL(4),MARKET_ORDER(5); 止盈止损（100）
-// > p	bigDecimal	下单价格
-// > s	string	订单状态 NEW ,CANCELED ,EXECUTED, FAILED
-// > v	bigDecimal	下单数量
-// s	string	交易对
-// t	long	事件时间
+// Response Parameters:
+
+// Parameter     Data Type   Description
+// d             json        Account order information
+// > N           string      Fee asset category
+// > O           long        Order creation time
+// > P           bigDecimal  Trigger price
+// > S           int         Trade type 1: Buy 2: Sell
+// > T           int         0: GE (Buy price greater than trigger price) 1: LE (Buy price less than trigger price)
+// > i           string      Order id
+// > o           int         Order type LIMIT_ORDER(1), POST_ONLY(2), IMMEDIATE_OR_CANCEL(3),
+//                           FILL_OR_KILL(4), MARKET_ORDER(5); Stop loss/take profit (100)
+// > p           bigDecimal  Order price
+// > s           string      Order status NEW, CANCELED, EXECUTED, FAILED
+// > v           bigDecimal  Order quantity
+// s             string      Trading pair
+// t             long        Event time

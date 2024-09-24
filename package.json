@@ -1,7 +1,7 @@
 {
   "name": "usdt_usdc_trader",
   "version": "1.0.0",
-  "description": "畫面操控是依照 MVC 架構",
+  "description": "The layout handling is based on the MVC architecture",
   "main": "layoutHandler.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
