@@ -22,12 +22,23 @@ Based on a month of operation, the estimated monthly profit is around **9%**. Be
 2. Download and install Node.js: [https://nodejs.org/](https://nodejs.org/)
 3. Create an account on MEXC Exchange using this [link](https://www.mexc.com/register?inviteCode=1iKXW).
 4. Generate an API key and secret in your MEXC account.
+   > step  
+   > to API Management Create New API Key  
+   > set Account： View Account Details  
+   > set Trade： View Order Details Trade  
+   > enter Notes (Required) what you want  
+   > then click create  
+   > go to "My API Key" setting you just create  
+   > change Trading Pairs  
+   > Add Trading Pairs => USDC/USDT  
+   > done
 5. Create a `.env` file in the project folder and add your API and Secret Keys like this:
 
    ```plaintext
    API_KEY=XXX
    SECRET_KEY=XXX
    ```
+
 6. Open the command prompt and navigate to the project folder.
 7. Run the following command to install dependencies:
 
