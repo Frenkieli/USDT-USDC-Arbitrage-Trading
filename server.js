@@ -313,8 +313,8 @@ function appendToFile(data) {
   console.log(`Successfully saved to log file: ${logEntry}`);
 }
 
-// Schedule the task to run every day at 11:00 AM
-cron.schedule("0 11 * * *", async () => {
+// Schedule the task to run every day at 8:00 AM GMT+8
+cron.schedule("0 8 * * *", async () => {
   try {
     // Assuming the total is obtained from your existing /api/getAccount endpoint
     const response = await axios.get(`${BASE_URL}/api/v3/account`);
@@ -331,7 +331,7 @@ cron.schedule("0 11 * * *", async () => {
 
     const data = {
       total,
-      timestamp: new Date().toLocaleString(),
+      timestamp: new Date().toUTCString(),
     };
 
     appendToFile(data);
@@ -357,7 +357,7 @@ cron.schedule("0 11 * * *", async () => {
 
     const data = {
       total,
-      timestamp: new Date().toLocaleString(),
+      timestamp: new Date().toUTCString(),
     };
 
     appendToFile(data);

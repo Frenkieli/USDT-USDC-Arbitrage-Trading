@@ -42,8 +42,8 @@ class TradingBot {
   calculateTargetDistribution(price) {
     // if (price >= 1.2) return { usdt: 1, usdc: 0 };
     // if (price >= 1.1) return { usdt: 1, usdc: 0 };
-    // if (price >= 1.001) return { usdt: 1, usdc: 0 };
-    if (price >= 1.0005) return { usdt: 1, usdc: 0 };
+    if (price >= 1.001) return { usdt: 1, usdc: 0 };
+    if (price >= 1.0005) return { usdt: 0.95, usdc: 0.05 };
     if (price >= 1.0004) return { usdt: 0.9, usdc: 0.1 };
     if (price >= 1.0003) return { usdt: 0.8, usdc: 0.2 };
     if (price >= 1.0002) return { usdt: 0.7, usdc: 0.3 };
@@ -53,7 +53,7 @@ class TradingBot {
     if (price >= 0.9998) return { usdt: 0.3, usdc: 0.7 };
     if (price >= 0.9997) return { usdt: 0.2, usdc: 0.8 };
     if (price >= 0.9996) return { usdt: 0.1, usdc: 0.9 };
-    // if (price >= 0.9995) return { usdt: 0.1, usdc: 0.9 };
+    if (price >= 0.9995) return { usdt: 0.05, usdc: 0.95 };
     // if (price >= 0.999) return { usdt: 0.05, usdc: 0.95 };
     // if (price >= 0.9) return { usdt: 0.1, usdc: 0.9 };
     return { usdt: 0, usdc: 1 };
@@ -82,10 +82,8 @@ class TradingBot {
     const priceBuyLevels = [
       // 1.2,
       // 1.1,
-      // 1.001,
-      1.0005, 1.0004, 1.0003, 1.0002, 1.0001, 1, 0.9999, 0.9998, 0.9997, 0.9996,
-      0.9995,
-      // 0.999,
+      1.001, 1.0005, 1.0004, 1.0003, 1.0002, 1.0001, 1, 0.9999, 0.9998, 0.9997,
+      0.9996, 0.9995, 0.999,
       //  0.9,
       // 0.8,
     ];

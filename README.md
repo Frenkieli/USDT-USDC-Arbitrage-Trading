@@ -1,10 +1,17 @@
-# USDT/USDC Arbitrage Trading Bot for MEXC
+# Introduction
 
-Hello everyone! I’ve developed a spot arbitrage trading bot specifically for the USDT/USDC pair on MEXC Exchange.
+This arbitrage trading bot is specifically designed for the USDT/USDC spot trading pair on MEXC Exchange, leveraging market price fluctuations to generate stable profits through a grid trading strategy. By continuously buying low and selling high within a predefined price range, the bot efficiently capitalizes on micro-price movements.
 
 ## How It Works
 
-The bot's core logic is simple yet effective: it buys USDT when the price reaches **0.9999** and sells when it hits **1**. It operates within a spread of **0.9995 - 1.0005**, continuously making small trades and distributing your funds within this range. Each successful trade generates a small profit, and since the funds remain in MEXC, they also benefit from the exchange's flexible interest rates.
+The bot follows a straightforward yet effective approach:
+
+- Buy USDT when the price is ≤ 0.9999.
+- Sell USDT when the price is ≥ 1.0000.
+- Executes high-frequency trades within the 0.999 - 1.001 price range.
+- Dynamically allocates and redistributes funds to maximize capital efficiency.
+
+Because the arbitrage funds remain within MEXC Exchange, users also benefit from the platform’s flexible deposit interest, further enhancing overall returns.
 
 ### Estimated Profits
 
@@ -14,9 +21,9 @@ Based on a month of operation, the estimated monthly profit is around **9%**. Be
 - 2024/8/10 - 3336.14
 - 2024/8/11 - 3348.84
 - 2024/9/9 - 3565.54
-- ... (other entries)
+- ... (other entries see file account_total_log.txt)
 
-## How to Start Arbitrage Trading
+## How to Get Started
 
 1. Download the project and unzip it.
 2. Download and install Node.js: [https://nodejs.org/](https://nodejs.org/)
