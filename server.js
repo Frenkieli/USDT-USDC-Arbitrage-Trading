@@ -95,7 +95,7 @@ function generateListenKey() {
 const app = express();
 const port = 3010;
 
-// 解析 JSON 請求數據
+// Parse JSON request data
 app.use(express.json());
 
 // Serve static files from the 'public' directory
@@ -167,13 +167,88 @@ app.get("/api/getAccount", async (req, res) => {
     .catch((error) => console.error("Error:", error));
 });
 
+// 添加緩存對象
+const tradeFeeCache = {
+  data: new Map(),
+  pending: new Map(), // 新增：存儲進行中的請求
+  timeout: 1000,
+};
+
+async function checkTradeFee(symbol) {
+  try {
+    const cachedData = tradeFeeCache.data.get(symbol);
+    const now = Date.now();
+
+    if (cachedData && now - cachedData.timestamp < tradeFeeCache.timeout) {
+      return cachedData.fees;
+    }
+
+    const pendingRequest = tradeFeeCache.pending.get(symbol);
+    if (pendingRequest) {
+      return pendingRequest;
+    }
+
+    const requestPromise = (async () => {
+      try {
+        const response = await axios.get(
+          `${BASE_URL}/api/v3/tradeFee?symbol=${symbol}`
+        );
+        const { makerCommission, takerCommission } = response.data.data;
+
+        if (makerCommission > 0 || takerCommission > 0) {
+          console.error(`
+            ========== WARNING: Trading Fee Detected! Stopping Trading! ==========
+            Trading Pair: ${symbol}
+            Maker Fee: ${makerCommission}
+            Taker Fee: ${takerCommission}
+            Time: ${new Date().toLocaleString()}
+            Shutting down server to prevent losses...
+            ==========================================
+          `);
+
+          process.exit(1);
+        }
+
+        const fees = { makerCommission, takerCommission };
+
+        // 更新緩存
+        tradeFeeCache.data.set(symbol, {
+          fees,
+          timestamp: now,
+        });
+
+        return fees;
+      } finally {
+        // 請求完成後，清除 pending 狀態
+        tradeFeeCache.pending.delete(symbol);
+      }
+    })();
+
+    // 存儲進行中的請求
+    tradeFeeCache.pending.set(symbol, requestPromise);
+
+    return requestPromise;
+  } catch (error) {
+    console.error(
+      "========== WARNING: Error checking trading fees. Stopping trading to prevent losses!",
+      error
+    );
+    process.exit(1);
+  }
+}
+
 app.get("/api/order", async (req, res) => {
-  axios
-    .get(`${BASE_URL}/api/v3/openOrders?symbol=${req.query.symbol}`)
-    .then((response) => {
-      res.send(response.data);
-    })
-    .catch((error) => console.error("Error:", error));
+  try {
+    await checkTradeFee(req.query.symbol);
+
+    const response = await axios.get(
+      `${BASE_URL}/api/v3/openOrders?symbol=${req.query.symbol}`
+    );
+    res.send(response.data);
+  } catch (error) {
+    console.error("Error:", error);
+    res.status(500).send({ error: "Internal Server Error" });
+  }
 });
 
 app.post("/api/v3/cancel", async (req, res) => {
@@ -310,36 +385,36 @@ startBrowser();
 function appendToFile(data) {
   const { assetBalances, total, timestamp } = data;
 
-  // 按資產名稱排序
+  // Sort by asset name
   const sortedBalances = assetBalances
     .filter((balance) => balance.total > 0)
     .sort((a, b) => a.asset.localeCompare(b.asset));
 
-  // 生成資產列表字符串
+  // Generate asset list string
   const assetsStr = sortedBalances
     .map((balance) => `${balance.asset}:${balance.total.toFixed(4)}`)
     .join(", ");
 
-  // 如果文件不存在，先創建表頭
+  // If file doesn't exist, create header first
   if (!fs.existsSync(logFilePath)) {
     const header = "| Date | Assets | USDT+USDC Total |\n| --- | --- | --- |\n";
     fs.writeFileSync(logFilePath, header, "utf8");
   }
 
-  // 生成新的日誌條目（markdown 表格行）
+  // Generate new log entry (markdown table row)
   const logEntry = `| ${timestamp} | ${assetsStr} | ${total.toFixed(4)} |\n`;
 
   fs.appendFileSync(logFilePath, logEntry, "utf8");
   console.log(`Successfully saved to log file: ${logEntry}`);
 }
 
-// 新增共用方法
+// Add shared method
 async function fetchAndLogAccountBalance() {
   try {
     const response = await axios.get(`${BASE_URL}/api/v3/account`);
     const { balances } = response.data;
 
-    // 計算所有資產餘額
+    // Calculate all asset balances
     let assetBalances = balances.map((balance) => {
       const total = parseFloat(balance.free) + parseFloat(balance.locked);
       return {
@@ -350,11 +425,11 @@ async function fetchAndLogAccountBalance() {
       };
     });
 
-    // 打印所有資產餘額
+    // Print all asset balances
     console.log("=== Asset Balances ===");
     assetBalances = assetBalances.filter((balance) => balance.total > 0);
 
-    // 獲取 USDT 和 USDC 的餘額用於記錄
+    // Get USDT and USDC balances for logging
     const usdtBalance = assetBalances.find(
       (balance) => balance.asset === "USDT"
     );
@@ -374,10 +449,10 @@ async function fetchAndLogAccountBalance() {
   }
 }
 
-// 修改定時任務
+// Modify scheduled task
 cron.schedule("0 8 * * *", fetchAndLogAccountBalance);
 
-// 修改初始執行
+// Modify initial execution
 (async () => {
   await fetchAndLogAccountBalance();
 })();
