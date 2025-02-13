@@ -19,12 +19,31 @@ axios.defaults.headers.common["Access-Control-Allow-Methods"] =
 axios.defaults.headers.common["Access-Control-Allow-Headers"] =
   "Content-Type, Authorization, Content-Length, X-Requested-With";
 
-// Here you need to write the encryption function for axios before sending, which has two parameters: params and data, but both are passed in params.
 function getSignature(params) {
-  const totalParams = Object.keys(params)
-    .map((key) => `${key}=${params[key]}`)
+  const convertedParams = {};
+  for (const [key, value] of Object.entries(params)) {
+    convertedParams[key] = String(value);
+  }
+
+  const orderedParams = Object.keys(convertedParams)
+    .sort()
+    .reduce((obj, key) => {
+      obj[key] = convertedParams[key];
+      return obj;
+    }, {});
+
+  const queryString = Object.entries(orderedParams)
+    .map(([key, value]) => {
+      const encodedValue = encodeURIComponent(value)
+        .replace(/%20/g, "+")
+        .replace(/%2C/g, "%2C")
+        .replace(/%3A/g, "%3A")
+        .replace(/%2F/g, "%2F");
+      return `${key}=${encodedValue}`;
+    })
     .join("&");
-  return CryptoJS.HmacSHA256(totalParams, secretKey).toString();
+
+  return CryptoJS.HmacSHA256(queryString, secretKey).toString().toLowerCase();
 }
 
 // Here you need to write the encryption function for axios before sending, which has two parameters: params and data, but both are passed in params.
@@ -45,6 +64,7 @@ axios.interceptors.request.use(function (config) {
       ...params,
       signature: getSignature(params),
     };
+
     config.url = `${config.url}?${new URLSearchParams(params).toString()}`;
   } else {
     config.data = {
@@ -61,15 +81,6 @@ axios.interceptors.request.use(function (config) {
 
   return config;
 });
-
-// axios
-//   .delete(
-//     `${BASE_URL}/api/v3/userDataStream?listenKey=1b32ba2916834b9e851f5069c8e5b2aaaf1c0f267d8667edd47b126f8f8144de`
-//   )
-//   .then((response) => {
-//     console.log("Delete ListenKey:", response.data);
-//   })
-//   .catch((error) => console.error("Error:", error));
 
 function generateListenKey() {
   return axios
@@ -237,19 +248,62 @@ async function checkTradeFee(symbol) {
   }
 }
 
+const orderDebounceCache = {
+  requests: new Map(),
+  timeout: 1000, // 1 second debounce timeout
+};
+
 app.get("/api/order", async (req, res) => {
   try {
-    await checkTradeFee(req.query.symbol);
+    const symbol = req.query.symbol;
+    const now = Date.now();
 
+    const lastRequest = orderDebounceCache.requests.get(symbol);
+    if (
+      lastRequest &&
+      now - lastRequest.timestamp < orderDebounceCache.timeout
+    ) {
+      return res.send(lastRequest.data);
+    }
+
+    await checkTradeFee(req.query.symbol);
     const response = await axios.get(
-      `${BASE_URL}/api/v3/openOrders?symbol=${req.query.symbol}`
+      `${BASE_URL}/api/v3/openOrders?symbol=${symbol}`
     );
+
+    // 在背景執行小額資產兌換，不等待結果
+    convertSmallAssets().catch((err) =>
+      console.error("Small assets conversion error:", err)
+    );
+
+    orderDebounceCache.requests.set(symbol, {
+      timestamp: now,
+      data: response.data,
+    });
+
     res.send(response.data);
   } catch (error) {
     console.error("Error:", error);
     res.status(500).send({ error: "Internal Server Error" });
   }
 });
+
+async function convertSmallAssets() {
+  const convertList = await axios.get(
+    `${BASE_URL}/api/v3/capital/convert/list`
+  );
+
+  const assetsToConvert = convertList.data
+    .filter((item) => !item.code)
+    .map((item) => item.asset);
+
+  if (assetsToConvert.length > 0) {
+    let convertResult = await axios.post(`${BASE_URL}/api/v3/capital/convert`, {
+      asset: assetsToConvert,
+    });
+    console.log(convertResult.data);
+  }
+}
 
 app.post("/api/v3/cancel", async (req, res) => {
   const toCancelOrderList = req.body;
@@ -298,64 +352,65 @@ app.post("/api/v3/cancel", async (req, res) => {
 
 app.post("/api/v3/order", async (req, res) => {
   const toOrderList = req.body;
-  let toBreak = false;
   let lessOneTotal = 0;
 
   try {
-    for (let i = 0; i < toOrderList.length; i++) {
-      if (toBreak) {
-        break;
-      }
-      const { symbol, side, type, quantity, price } = toOrderList[i];
-      if (quantity * price >= 1) {
-        console.log(
-          `Place order: ${toOrderList[i].side} - ${toOrderList[i].price} - ${toOrderList[i].quantity}`
-        );
+    // Filter out orders with value >= 1 and format them for batch order
+    const validOrders = toOrderList
+      .filter((order) => order.quantity * order.price >= 1)
+      .map((order, index) => ({
+        type: order.type,
+        symbol: order.symbol,
+        side: order.side,
+        price: order.price.toString(),
+        quantity: order.quantity.toString(),
+        newClientOrderId: Date.now() + index,
+      }));
 
-        await axios
-          .post(`${BASE_URL}/api/v3/order`, {
-            symbol,
-            side,
-            type,
-            quantity,
-            price,
-          })
-          .then((response) => {
-            console.log(
-              `Place Order Done: ${toOrderList[i].side} - ${toOrderList[i].price} - ${toOrderList[i].quantity}`
-            );
-          })
-          .catch((error) => {
-            console.error(
-              `Place Order Error: ${toOrderList[i].side} - ${toOrderList[i].price} - ${toOrderList[i].quantity}:`,
-              error
-            );
-            if (
-              error?.response?.data?.code === 30005 ||
-              error?.response?.data?.code === 30004
-            ) {
-              toBreak = true;
-              // axios.delete(`${BASE_URL}/api/v3/openOrders?symbol=${symbol}`);
-            }
-          });
-      } else {
-        lessOneTotal += quantity * price;
+    // Calculate total for orders with value < 1
+    lessOneTotal = toOrderList
+      .filter((order) => order.quantity * order.price < 1)
+      .reduce((sum, order) => sum + order.quantity * order.price, 0);
+
+    if (validOrders.length > 0) {
+      const batchSize = 30;
+      for (let i = 0; i < validOrders.length; i += batchSize) {
+        const batch = validOrders.slice(i, i + batchSize);
+
+        const result = await axios.post(`${BASE_URL}/api/v3/batchOrders`, {
+          batchOrders: JSON.stringify(batch),
+        });
+
+        if (result.data && Array.isArray(result.data)) {
+          const errors = result.data.filter((item) => item.code === 500);
+          if (errors.length > 0) {
+            console.error("Batch order errors:", {
+              timestamp: new Date().toLocaleString(),
+              totalOrders: batch.length,
+              failedOrders: errors.length,
+              errors: errors,
+              requestData: batch,
+              responseData: result.data,
+            });
+          }
+        }
       }
     }
-  } catch (error) {
-    console.error(`Error 2:`, error);
-  }
 
-  if (toBreak) {
-    console.error(`response error client: ${new Date().toLocaleString()}`);
-
-    res.send("error");
-  } else {
     console.log(
       `response success client: ${lessOneTotal} - ${new Date().toLocaleString()}`
     );
-
     res.send("success");
+  } catch (error) {
+    // 增強錯誤日誌
+    console.error("Error processing orders:", {
+      timestamp: new Date().toLocaleString(),
+      message: error.message,
+      response: error.response?.data,
+      requestData: error.config?.data,
+      stack: error.stack,
+    });
+    res.send("error");
   }
 });
 
