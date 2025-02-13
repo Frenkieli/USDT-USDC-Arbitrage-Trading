@@ -169,17 +169,19 @@ app.get("/api/getAccount", async (req, res) => {
     .then((response) => {
       const { balances } = response.data;
 
-      const usdtBalance = balances.find((balance) => balance.asset === "USDT");
-      const usdcBalance = balances.find((balance) => balance.asset === "USDC");
+      const nonZeroBalances = balances.filter((balance) => {
+        const total = parseFloat(balance.free) + parseFloat(balance.locked);
+        return total > 0;
+      });
 
-      let usdtTotal =
-        parseFloat(usdtBalance.free) + parseFloat(usdtBalance.locked);
-      let usdcTotal =
-        parseFloat(usdcBalance.free) + parseFloat(usdcBalance.locked);
-      let total = usdtTotal + usdcTotal;
+      let output = "\nAccount Balance:";
+      nonZeroBalances.forEach((balance) => {
+        const total = parseFloat(balance.free) + parseFloat(balance.locked);
+        output += `\n${balance.asset}: ${total.toFixed(8)}`;
+      });
+      output += `\nTime: ${new Date().toLocaleString()}\n`;
 
-      console.log(`Account Total : ${total} - ${new Date().toLocaleString()}`);
-
+      console.log(output);
       res.send(response.data);
     })
     .catch((error) => console.error("Error:", error));
