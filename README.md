@@ -1,4 +1,6 @@
-# Introduction
+# MEXC USDT/USDC Grid Trading Bot and MX rewards auto convert
+
+## Introduction
 
 This arbitrage trading bot is specifically designed for the USDT/USDC spot trading pair on MEXC Exchange, leveraging market price fluctuations to generate stable profits through a grid trading strategy. By continuously buying low and selling high within a predefined price range, the bot efficiently capitalizes on micro-price movements.
 
