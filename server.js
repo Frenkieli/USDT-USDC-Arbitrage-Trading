@@ -9,7 +9,7 @@ const puppeteer = require("puppeteer");
 const BASE_URL = "https://api.mexc.com";
 const apiKey = process.env.API_KEY;
 const secretKey = process.env.SECRET_KEY;
-const logFilePath = path.join(__dirname, "account_total_log.txt");
+const logFilePath = path.join(__dirname, "account_total_log.md");
 
 axios.defaults.headers.common["X-MEXC-APIKEY"] = apiKey;
 axios.defaults.headers.common["Content-Type"] = "application/json";
@@ -152,13 +152,13 @@ app.get("/api/getAccount", async (req, res) => {
       const { balances } = response.data;
 
       const usdtBalance = balances.find((balance) => balance.asset === "USDT");
-      const pairBalance = balances.find((balance) => balance.asset === "USDC");
+      const usdcBalance = balances.find((balance) => balance.asset === "USDC");
 
       let usdtTotal =
         parseFloat(usdtBalance.free) + parseFloat(usdtBalance.locked);
-      let pairTotal =
-        parseFloat(pairBalance.free) + parseFloat(pairBalance.locked);
-      let total = usdtTotal + pairTotal;
+      let usdcTotal =
+        parseFloat(usdcBalance.free) + parseFloat(usdcBalance.locked);
+      let total = usdtTotal + usdcTotal;
 
       console.log(`Account Total : ${total} - ${new Date().toLocaleString()}`);
 
@@ -308,29 +308,63 @@ startBrowser();
 
 // Function to append data to a local file
 function appendToFile(data) {
-  const logEntry = `${data.total} - ${data.timestamp}\n`;
+  const { assetBalances, total, timestamp } = data;
+
+  // 按資產名稱排序
+  const sortedBalances = assetBalances
+    .filter((balance) => balance.total > 0)
+    .sort((a, b) => a.asset.localeCompare(b.asset));
+
+  // 生成資產列表字符串
+  const assetsStr = sortedBalances
+    .map((balance) => `${balance.asset}:${balance.total.toFixed(4)}`)
+    .join(", ");
+
+  // 如果文件不存在，先創建表頭
+  if (!fs.existsSync(logFilePath)) {
+    const header = "| Date | Assets | USDT+USDC Total |\n| --- | --- | --- |\n";
+    fs.writeFileSync(logFilePath, header, "utf8");
+  }
+
+  // 生成新的日誌條目（markdown 表格行）
+  const logEntry = `| ${timestamp} | ${assetsStr} | ${total.toFixed(4)} |\n`;
+
   fs.appendFileSync(logFilePath, logEntry, "utf8");
   console.log(`Successfully saved to log file: ${logEntry}`);
 }
 
-// Schedule the task to run every day at 8:00 AM GMT+8
-cron.schedule("0 8 * * *", async () => {
+// 新增共用方法
+async function fetchAndLogAccountBalance() {
   try {
-    // Assuming the total is obtained from your existing /api/getAccount endpoint
     const response = await axios.get(`${BASE_URL}/api/v3/account`);
     const { balances } = response.data;
 
-    const usdtBalance = balances.find((balance) => balance.asset === "USDT");
-    const pairBalance = balances.find((balance) => balance.asset === "USDC");
+    // 計算所有資產餘額
+    let assetBalances = balances.map((balance) => {
+      const total = parseFloat(balance.free) + parseFloat(balance.locked);
+      return {
+        asset: balance.asset,
+        free: parseFloat(balance.free),
+        locked: parseFloat(balance.locked),
+        total,
+      };
+    });
 
-    const usdtTotal =
-      parseFloat(usdtBalance.free) + parseFloat(usdtBalance.locked);
-    const pairTotal =
-      parseFloat(pairBalance.free) + parseFloat(pairBalance.locked);
-    const total = usdtTotal + pairTotal;
+    // 打印所有資產餘額
+    console.log("=== Asset Balances ===");
+    assetBalances = assetBalances.filter((balance) => balance.total > 0);
+
+    // 獲取 USDT 和 USDC 的餘額用於記錄
+    const usdtBalance = assetBalances.find(
+      (balance) => balance.asset === "USDT"
+    );
+    const usdcBalance = assetBalances.find(
+      (balance) => balance.asset === "USDC"
+    );
 
     const data = {
-      total,
+      total: (usdtBalance?.total || 0) + (usdcBalance?.total || 0),
+      assetBalances,
       timestamp: new Date().toUTCString(),
     };
 
@@ -338,30 +372,12 @@ cron.schedule("0 8 * * *", async () => {
   } catch (error) {
     console.error("Error fetching account total:", error);
   }
-});
+}
 
+// 修改定時任務
+cron.schedule("0 8 * * *", fetchAndLogAccountBalance);
+
+// 修改初始執行
 (async () => {
-  try {
-    // Assuming the total is obtained from your existing /api/getAccount endpoint
-    const response = await axios.get(`${BASE_URL}/api/v3/account`);
-    const { balances } = response.data;
-
-    const usdtBalance = balances.find((balance) => balance.asset === "USDT");
-    const pairBalance = balances.find((balance) => balance.asset === "USDC");
-
-    const usdtTotal =
-      parseFloat(usdtBalance.free) + parseFloat(usdtBalance.locked);
-    const pairTotal =
-      parseFloat(pairBalance.free) + parseFloat(pairBalance.locked);
-    const total = usdtTotal + pairTotal;
-
-    const data = {
-      total,
-      timestamp: new Date().toUTCString(),
-    };
-
-    appendToFile(data);
-  } catch (error) {
-    console.error("Error fetching account total:", error);
-  }
+  await fetchAndLogAccountBalance();
 })();
