@@ -19,6 +19,13 @@ axios.defaults.headers.common["Access-Control-Allow-Methods"] =
 axios.defaults.headers.common["Access-Control-Allow-Headers"] =
   "Content-Type, Authorization, Content-Length, X-Requested-With";
 
+function getUrlSignature(params) {
+  const totalParams = Object.keys(params)
+    .map((key) => `${key}=${params[key]}`)
+    .join("&");
+  return CryptoJS.HmacSHA256(totalParams, secretKey).toString();
+}
+
 function getSignature(params) {
   const convertedParams = {};
   for (const [key, value] of Object.entries(params)) {
@@ -62,7 +69,7 @@ axios.interceptors.request.use(function (config) {
 
     params = {
       ...params,
-      signature: getSignature(params),
+      signature: getUrlSignature(params),
     };
 
     config.url = `${config.url}?${new URLSearchParams(params).toString()}`;
@@ -294,7 +301,9 @@ async function convertSmallAssets() {
   );
 
   const assetsToConvert = convertList.data
-    .filter((item) => !item.code)
+    .filter(
+      (item) => !item.code && item.asset !== "USDT" && item.asset !== "USDC"
+    )
     .map((item) => item.asset);
 
   if (assetsToConvert.length > 0) {

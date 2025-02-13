@@ -10,8 +10,9 @@ The bot follows a straightforward yet effective approach:
 - Sell USDT when the price is ≥ 1.0000.
 - Executes high-frequency trades within the 0.999 - 1.001 price range.
 - Dynamically allocates and redistributes funds to maximize capital efficiency.
+- Automatically converts small-balance assets to MX when rewards are distributed (typically at their peak value).
 
-Because the arbitrage funds remain within MEXC Exchange, users also benefit from the platform’s flexible deposit interest, further enhancing overall returns.
+Because the arbitrage funds remain within MEXC Exchange, users also benefit from the platform's flexible deposit interest, further enhancing overall returns.
 
 ### Estimated Profits
 
