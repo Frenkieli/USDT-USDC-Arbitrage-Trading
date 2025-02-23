@@ -24,7 +24,7 @@ Based on a month of operation, the estimated monthly profit is around **9%**. Be
 - 2024/8/10 - 3336.14
 - 2024/8/11 - 3348.84
 - 2024/9/9 - 3565.54
-- ... (other entries see file account_total_log.txt)
+- ... (other entries see file account_total_log.md)
 
 ## How to Get Started
 
