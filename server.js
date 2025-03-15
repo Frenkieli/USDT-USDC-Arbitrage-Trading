@@ -449,7 +449,7 @@ startBrowser();
 
 // Function to append data to a local file
 function appendToFile(data) {
-  const { assetBalances, total, timestamp } = data;
+  const { assetBalances, total, totalPrice, timestamp } = data;
 
   // Sort by asset name
   const sortedBalances = assetBalances
@@ -463,12 +463,14 @@ function appendToFile(data) {
 
   // If file doesn't exist, create header first
   if (!fs.existsSync(logFilePath)) {
-    const header = "| Date | Assets | USDT+USDC Total |\n| --- | --- | --- |\n";
+    const header = "| Date | Assets | USDT Value |\n| --- | --- | --- |\n";
     fs.writeFileSync(logFilePath, header, "utf8");
   }
 
   // Generate new log entry (markdown table row)
-  const logEntry = `| ${timestamp} | ${assetsStr} | ${total.toFixed(4)} |\n`;
+  const logEntry = `| ${timestamp} | ${assetsStr} | ${totalPrice.toFixed(
+    4
+  )} |\n`;
 
   fs.appendFileSync(logFilePath, logEntry, "utf8");
   console.log(`Successfully saved to log file: ${logEntry}`);
@@ -481,19 +483,44 @@ async function fetchAndLogAccountBalance() {
     const { balances } = response.data;
 
     // Calculate all asset balances
-    let assetBalances = balances.map((balance) => {
-      const total = parseFloat(balance.free) + parseFloat(balance.locked);
-      return {
-        asset: balance.asset,
-        free: parseFloat(balance.free),
-        locked: parseFloat(balance.locked),
-        total,
-      };
-    });
+    let assetBalances = await Promise.all(
+      balances.map(async (balance) => {
+        const total = parseFloat(balance.free) + parseFloat(balance.locked);
+
+        if (total === 0) {
+          return null;
+        }
+
+        let totalPrice = balance.asset === "USDT" ? total : 0;
+
+        if (balance.asset !== "USDT") {
+          try {
+            const response = await axios.get(
+              `${BASE_URL}/api/v3/ticker/price?symbol=${balance.asset}USDT`
+            );
+
+            totalPrice = total * response.data.price;
+          } catch (error) {
+            console.log(
+              "\x1b[31m%s\x1b[0m",
+              `Asset Ticker not found: ${balance.asset}USDT`
+            );
+          }
+        }
+
+        return {
+          asset: balance.asset,
+          free: parseFloat(balance.free),
+          locked: parseFloat(balance.locked),
+          total,
+          totalPrice,
+        };
+      })
+    );
 
     // Print all asset balances
     console.log("=== Asset Balances ===");
-    assetBalances = assetBalances.filter((balance) => balance.total > 0);
+    assetBalances = assetBalances.filter(Boolean);
 
     // Get USDT and USDC balances for logging
     const usdtBalance = assetBalances.find(
@@ -503,8 +530,14 @@ async function fetchAndLogAccountBalance() {
       (balance) => balance.asset === "USDC"
     );
 
+    const totalPrice = assetBalances.reduce(
+      (sum, balance) => sum + balance.totalPrice,
+      0
+    );
+
     const data = {
       total: (usdtBalance?.total || 0) + (usdcBalance?.total || 0),
+      totalPrice,
       assetBalances,
       timestamp: new Date().toUTCString(),
     };

@@ -56,9 +56,9 @@ class ModelHandler {
     );
 
     let usdtTotal =
-      parseFloat(usdtBalance.free) + parseFloat(usdtBalance.locked);
+      parseFloat(usdtBalance?.free || 0) + parseFloat(usdtBalance?.locked || 0);
     let pairTotal =
-      parseFloat(pairBalance.free) + parseFloat(pairBalance.locked);
+      parseFloat(pairBalance?.free || 0) + parseFloat(pairBalance?.locked || 0);
     let total = usdtTotal + pairTotal;
     this.walletBalances = {
       usdtBalance: {
