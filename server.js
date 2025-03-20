@@ -9,7 +9,7 @@ const puppeteer = require("puppeteer");
 const BASE_URL = "https://api.mexc.com";
 const apiKey = process.env.API_KEY;
 const secretKey = process.env.SECRET_KEY;
-const logFilePath = path.join(__dirname, "account_total_log.md");
+const logFilePath = path.join(__dirname, "account_total_log.csv");
 
 axios.defaults.headers.common["X-MEXC-APIKEY"] = apiKey;
 axios.defaults.headers.common["Content-Type"] = "application/json";
@@ -449,7 +449,7 @@ startBrowser();
 
 // Function to append data to a local file
 function appendToFile(data) {
-  const { assetBalances, total, totalPrice, timestamp } = data;
+  const { assetBalances, totalPrice, timestamp } = data;
 
   // Sort by asset name
   const sortedBalances = assetBalances
@@ -459,21 +459,19 @@ function appendToFile(data) {
   // Generate asset list string
   const assetsStr = sortedBalances
     .map((balance) => `${balance.asset}:${balance.total.toFixed(4)}`)
-    .join(", ");
+    .join(";");
 
   // If file doesn't exist, create header first
   if (!fs.existsSync(logFilePath)) {
-    const header = "| Date | Assets | USDT Value |\n| --- | --- | --- |\n";
+    const header = "Date,Assets,USDT Value\n";
     fs.writeFileSync(logFilePath, header, "utf8");
   }
 
-  // Generate new log entry (markdown table row)
-  const logEntry = `| ${timestamp} | ${assetsStr} | ${totalPrice.toFixed(
-    4
-  )} |\n`;
+  // Generate new log entry (CSV row)
+  const logEntry = `${timestamp},${assetsStr},${totalPrice.toFixed(4)}\n`;
 
   fs.appendFileSync(logFilePath, logEntry, "utf8");
-  console.log(`Successfully saved to log file: ${logEntry}`);
+  console.log(`Successfully saved to CSV file: ${logEntry}`);
 }
 
 // Add shared method
@@ -522,24 +520,15 @@ async function fetchAndLogAccountBalance() {
     console.log("=== Asset Balances ===");
     assetBalances = assetBalances.filter(Boolean);
 
-    // Get USDT and USDC balances for logging
-    const usdtBalance = assetBalances.find(
-      (balance) => balance.asset === "USDT"
-    );
-    const usdcBalance = assetBalances.find(
-      (balance) => balance.asset === "USDC"
-    );
-
     const totalPrice = assetBalances.reduce(
       (sum, balance) => sum + balance.totalPrice,
       0
     );
 
     const data = {
-      total: (usdtBalance?.total || 0) + (usdcBalance?.total || 0),
       totalPrice,
       assetBalances,
-      timestamp: new Date().toUTCString(),
+      timestamp: new Date().toLocaleString().replace(/[,]/g, ""),
     };
 
     appendToFile(data);
