@@ -297,22 +297,61 @@ app.get("/api/order", async (req, res) => {
   }
 });
 
+const processingAssets = new Set();
+let pendingConversion = false;
+
 async function convertSmallAssets() {
-  const convertList = await axios.get(
-    `${BASE_URL}/api/v3/capital/convert/list`
-  );
+  if (pendingConversion) {
+    console.log("Conversion already pending, skipping...");
+    return;
+  }
 
-  const assetsToConvert = convertList.data
-    .filter(
-      (item) => !item.code && item.asset !== "USDT" && item.asset !== "USDC"
-    )
-    .map((item) => item.asset);
+  try {
+    const convertList = await axios.get(
+      `${BASE_URL}/api/v3/capital/convert/list`
+    );
 
-  if (assetsToConvert.length > 0) {
-    let convertResult = await axios.post(`${BASE_URL}/api/v3/capital/convert`, {
-      asset: assetsToConvert,
-    });
-    console.log(convertResult.data);
+    const assetsToConvert = convertList.data
+      .filter(
+        (item) =>
+          !item.code &&
+          item.asset !== "USDT" &&
+          item.asset !== "USDC" &&
+          !processingAssets.has(item.asset)
+      )
+      .map((item) => item.asset);
+
+    if (assetsToConvert.length > 0) {
+      pendingConversion = true;
+      assetsToConvert.forEach((asset) => processingAssets.add(asset));
+
+      console.log(
+        `Scheduled conversion for assets: ${assetsToConvert.join(
+          ", "
+        )} in 40 seconds`
+      );
+
+      await new Promise((resolve) => setTimeout(resolve, 40000));
+
+      try {
+        let convertResult = await axios.post(
+          `${BASE_URL}/api/v3/capital/convert`,
+          {
+            asset: assetsToConvert,
+          }
+        );
+        console.log("Convert result:", convertResult.data);
+      } catch (error) {
+        console.error("Convert error:", error);
+      } finally {
+        assetsToConvert.forEach((asset) => processingAssets.delete(asset));
+        pendingConversion = false;
+      }
+    }
+  } catch (error) {
+    console.error("Failed to get convert list:", error);
+
+    pendingConversion = false;
   }
 }
 
