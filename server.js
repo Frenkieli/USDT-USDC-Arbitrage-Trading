@@ -328,10 +328,10 @@ async function convertSmallAssets() {
       console.log(
         `Scheduled conversion for assets: ${assetsToConvert.join(
           ", "
-        )} in 40 seconds`
+        )} in 20 seconds`
       );
 
-      await new Promise((resolve) => setTimeout(resolve, 40000));
+      await new Promise((resolve) => setTimeout(resolve, 20000));
 
       try {
         let convertResult = await axios.post(
